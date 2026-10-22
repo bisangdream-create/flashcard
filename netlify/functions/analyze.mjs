@@ -21,7 +21,7 @@ type은 한자면 "hanzi", 영어 단어면 "english".
 meaning은 한국어 뜻이며 한자는 훈음도 포함하세요. example은 짧은 한국어 설명 또는 사용 예시이며 없으면 빈 문자열입니다.
 잘 보이지 않는 단어는 추측하지 말고 제외하세요. 최대 100개만 반환하세요.
 예: [{"term":"apple","type":"english","reading":"/ˈæp.əl/","meaning":"사과","example":"I ate an apple."}]`;
-    const upstream = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent", {
+    const upstream = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
       body: JSON.stringify({
