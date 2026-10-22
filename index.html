@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI 스마트 플래시카드</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;800&display=swap');
+*{box-sizing:border-box}body{font-family:'Noto Sans KR',sans-serif;background:#0b1220;color:#e5e7eb}
+.flip{perspective:1000px}.inner{transform-style:preserve-3d;transition:transform .45s}.inner.flipped{transform:rotateY(180deg)}
+.face{backface-visibility:hidden;-webkit-backface-visibility:hidden}.back{transform:rotateY(180deg)}
+button:disabled{opacity:.35;cursor:not-allowed}.drop{border:1px dashed #64748b}
+</style>
+</head>
+<body class="min-h-screen">
+<header class="border-b border-slate-700 bg-slate-900/90">
+ <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between gap-3 flex-wrap">
+  <div class="flex items-center gap-3"><div class="bg-indigo-600 rounded-xl p-3"><i class="fa-solid fa-layer-group text-xl"></i></div><div><h1 class="font-extrabold text-xl">AI 스마트 플래시카드</h1><p class="text-xs text-slate-400">사진에서 단어를 추출하고 나만의 단어장 만들기</p></div></div>
+  <button id="reset" class="text-sm rounded-lg bg-slate-700 hover:bg-slate-600 px-3 py-2"><i class="fa-solid fa-shuffle mr-1"></i>순서 섞기</button>
+ </div>
+</header>
+<main class="max-w-4xl mx-auto p-4 md:p-6 space-y-5">
+ <section class="bg-slate-800 border border-slate-700 rounded-2xl p-5">
+  <h2 class="font-bold mb-3"><i class="fa-solid fa-camera text-indigo-400 mr-2"></i>사진으로 카드 만들기</h2>
+  <p class="text-sm text-slate-300 mb-4">교재, 한자, 영어 단어장 사진을 선택하면 AI가 단어·발음·뜻을 추출합니다.</p>
+  <div class="flex flex-col sm:flex-row gap-3">
+   <input id="image" type="file" accept="image/*" class="block w-full text-sm text-slate-300 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-700 file:px-4 file:py-2 file:text-white">
+   <button id="analyze" disabled class="shrink-0 bg-indigo-600 hover:bg-indigo-500 rounded-xl px-5 py-2 font-semibold"><i class="fa-solid fa-wand-magic-sparkles mr-2"></i>AI 카드 변환</button>
+  </div>
+  <p id="status" role="status" class="text-sm mt-3 text-slate-400">AI 사진 분석은 배포 후 Gemini API 키를 설정하면 작동합니다.</p>
+  <div class="mt-4 flex flex-wrap gap-2">
+   <button id="add-manual" class="rounded-lg border border-slate-600 px-3 py-2 text-sm hover:bg-slate-700"><i class="fa-solid fa-plus mr-1"></i>카드 직접 추가</button>
+   <button id="export" class="rounded-lg border border-slate-600 px-3 py-2 text-sm hover:bg-slate-700"><i class="fa-solid fa-file-export mr-1"></i>카드 목록 내보내기</button>
+   <label class="rounded-lg border border-slate-600 px-3 py-2 text-sm hover:bg-slate-700 cursor-pointer"><i class="fa-solid fa-file-import mr-1"></i>공유 카드 가져오기<input id="import" type="file" accept=".json,application/json" class="hidden"></label>
+  </div>
+  <p class="text-xs text-slate-500 mt-3">개인 학습 데이터는 현재 브라우저에 저장됩니다. 공유는 JSON 파일을 내보내 상대방에게 전달하는 방식입니다.</p>
+ </section>
+ <section class="bg-slate-800 border border-slate-700 rounded-2xl p-4 sm:p-5">
+  <div class="flex justify-between items-center gap-3 mb-4"><div><h2 class="font-bold">내 단어장</h2><p class="text-xs text-slate-400 mt-1">카드를 눌러 정답을 확인하세요.</p></div><div id="counter" class="text-indigo-300 text-sm font-bold">0 / 0</div></div>
+  <div id="empty" class="text-center py-12 text-slate-400"><i class="fa-regular fa-images text-4xl mb-3"></i><p class="font-semibold">아직 카드가 없습니다.</p><p class="text-sm mt-1">사진을 분석하거나 카드를 직접 추가하세요.</p></div>
+  <div id="study" class="hidden max-w-md mx-auto">
+   <div class="flex justify-between mb-2 text-xs text-slate-400"><span id="kind">단어</span><button id="mark" class="text-rose-300 hover:text-rose-200"><i class="fa-regular fa-bookmark mr-1"></i><span id="marktext">모르는 카드로 표시</span></button></div>
+   <div class="flip h-72 sm:h-80 cursor-pointer" id="fliparea" tabindex="0" role="button" aria-label="카드 뒤집기">
+    <div id="inner" class="inner relative h-full w-full">
+     <div class="face absolute inset-0 rounded-2xl border border-slate-600 bg-gradient-to-br from-slate-700 to-slate-900 p-6 flex flex-col items-center justify-center text-center shadow-xl"><span class="text-xs text-slate-400 mb-5">문제 · 클릭해서 확인</span><h3 id="front" class="text-4xl font-extrabold break-words"></h3><p id="frontsub" class="text-indigo-300 mt-3"></p></div>
+     <div class="face back absolute inset-0 rounded-2xl border border-indigo-400/50 bg-gradient-to-br from-indigo-950 to-slate-900 p-6 flex flex-col items-center justify-center text-center shadow-xl"><span class="text-xs text-indigo-300 mb-5">정답 · 클릭해서 돌아가기</span><h3 id="back" class="text-3xl font-bold break-words"></h3><p id="backsub" class="text-indigo-200 mt-3"></p><p id="example" class="text-sm text-slate-400 mt-4"></p></div>
+    </div>
+   </div>
+   <div class="grid grid-cols-3 gap-3 mt-4"><button id="prev" class="rounded-xl bg-slate-700 hover:bg-slate-600 py-3"><i class="fa-solid fa-arrow-left"></i></button><button id="flipbtn" class="rounded-xl bg-indigo-600 hover:bg-indigo-500 py-3 font-semibold"><i class="fa-solid fa-repeat mr-1"></i>뒤집기</button><button id="next" class="rounded-xl bg-slate-700 hover:bg-slate-600 py-3"><i class="fa-solid fa-arrow-right"></i></button></div>
+   <div class="flex flex-wrap gap-2 mt-4"><button id="filter" class="rounded-lg border border-slate-600 px-3 py-2 text-sm">모르는 카드만 보기</button><button id="swap" class="rounded-lg border border-slate-600 px-3 py-2 text-sm">뜻부터 보기</button><button id="delete" class="rounded-lg border border-rose-900 text-rose-300 px-3 py-2 text-sm">현재 카드 삭제</button></div>
+  </div>
+ </section>
+ <footer class="text-xs text-slate-500 text-center pb-5">카드 데이터는 이 브라우저에 저장됩니다. 브라우저 데이터 삭제 시 함께 지워질 수 있습니다.</footer>
+</main>
+<dialog id="manual" class="bg-slate-800 text-slate-100 rounded-2xl border border-slate-600 p-5 w-[min(92vw,440px)]">
+ <form id="manualform" method="dialog" class="space-y-3"><h3 class="font-bold text-lg">카드 직접 추가</h3>
+ <input id="mterm" required placeholder="단어 또는 한자" class="w-full rounded-lg bg-slate-900 border border-slate-600 p-3">
+ <input id="mreading" placeholder="발음 (선택)" class="w-full rounded-lg bg-slate-900 border border-slate-600 p-3">
+ <input id="mmeaning" required placeholder="뜻" class="w-full rounded-lg bg-slate-900 border border-slate-600 p-3">
+ <textarea id="mexample" placeholder="예문 또는 메모 (선택)" class="w-full rounded-lg bg-slate-900 border border-slate-600 p-3"></textarea>
+ <div class="flex gap-2 justify-end"><button value="cancel" class="rounded-lg bg-slate-700 px-4 py-2">취소</button><button id="save-manual" value="default" class="rounded-lg bg-indigo-600 px-4 py-2">저장</button></div>
+ </form>
+</dialog>
+<script>
+const $=id=>document.getElementById(id);
+const STORAGE='ai-flashcards-v1';
+let cards=[], index=0, filteredOnly=false, flipped=false, swapped=false, selectedImage=null;
+try { cards=JSON.parse(localStorage.getItem(STORAGE)||'[]'); if(!Array.isArray(cards))cards=[]; } catch { cards=[]; }
+function persist(){try{localStorage.setItem(STORAGE,JSON.stringify(cards));}catch{statusMsg('저장 공간이 부족합니다. 카드 목록을 내보내 백업해 주세요.','error');}}
+function statusMsg(msg,type='info'){ $('status').textContent=msg; $('status').className='text-sm mt-3 '+(type==='error'?'text-rose-300':type==='ok'?'text-emerald-300':'text-slate-400');}
+function list(){return cards.map((c,i)=>({...c,_i:i})).filter(c=>!filteredOnly||c.bookmarked);}
+function render(){
+ const arr=list(); $('counter').textContent=arr.length?`${Math.min(index+1,arr.length)} / ${arr.length}`:'0 / 0';
+ $('empty').classList.toggle('hidden',arr.length>0); $('study').classList.toggle('hidden',arr.length===0);
+ if(!arr.length){index=0;return;} if(index>=arr.length)index=0;
+ const c=arr[index]; const front=swapped?c.meaning:c.term, back=swapped?c.term:c.meaning;
+ $('front').textContent=front||''; $('frontsub').textContent=swapped?'':(c.reading||'');
+ $('back').textContent=back||''; $('backsub').textContent=swapped?(c.reading||''):''; $('example').textContent=c.example||'';
+ $('kind').textContent=c.type==='hanzi'?'한자':c.type==='english'?'영어 단어':'단어 카드';
+ $('marktext').textContent=c.bookmarked?'모르는 카드 표시됨':'모르는 카드로 표시';
+ $('mark').innerHTML=`<i class="fa-${c.bookmarked?'solid':'regular'} fa-bookmark mr-1"></i><span id="marktext">${c.bookmarked?'모르는 카드 표시됨':'모르는 카드로 표시'}</span>`;
+ $('prev').disabled=arr.length<2;$('next').disabled=arr.length<2;
+ $('filter').textContent=filteredOnly?'전체 카드 보기':`모르는 카드만 보기 (${cards.filter(c=>c.bookmarked).length})`;
+ $('inner').classList.toggle('flipped',flipped);
+}
+function addCards(newCards){cards.push(...newCards.map(c=>({term:String(c.term||'').slice(0,300),type:c.type==='hanzi'?'hanzi':c.type==='english'?'english':'other',reading:String(c.reading||'').slice(0,300),meaning:String(c.meaning||'').slice(0,500),example:String(c.example||'').slice(0,1000),bookmarked:false})).filter(c=>c.term&&c.meaning));index=0;filteredOnly=false;persist();render();}
+function toggleFlip(){flipped=!flipped;render();}
+$('image').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;if(!f.type.startsWith('image/')){statusMsg('이미지 파일을 선택해 주세요.','error');return;}if(f.size>12*1024*1024){statusMsg('이미지는 12MB 이하로 선택해 주세요.','error');return;}selectedImage=f;$('analyze').disabled=false;statusMsg(`선택됨: ${f.name}`);});
+$('analyze').addEventListener('click',async()=>{
+ if(!selectedImage)return;
+ $('analyze').disabled=true;statusMsg('사진을 분석하고 있습니다. 잠시 기다려 주세요…');
+ try{
+  const base64=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result).split(',')[1]);r.onerror=reject;r.readAsDataURL(selectedImage);});
+  const response=await fetch('/.netlify/functions/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mimeType:selectedImage.type,data:base64})});
+  const result=await response.json();if(!response.ok)throw new Error(result.error||'AI 분석 요청에 실패했습니다.');
+  if(!Array.isArray(result.cards)||!result.cards.length)throw new Error('사진에서 단어를 찾지 못했습니다. 더 선명한 사진을 사용해 주세요.');
+  addCards(result.cards);statusMsg(`${result.cards.length}개의 카드가 추가되었습니다.`,'ok');
+ }catch(err){statusMsg(err.message||'오류가 발생했습니다. API 키와 배포 설정을 확인해 주세요.','error');}
+ finally{$('analyze').disabled=!selectedImage;}
+});
+$('fliparea').addEventListener('click',toggleFlip);$('fliparea').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggleFlip();}});
+$('flipbtn').onclick=toggleFlip;
+$('prev').onclick=()=>{const a=list();if(a.length){index=(index-1+a.length)%a.length;flipped=false;render();}};
+$('next').onclick=()=>{const a=list();if(a.length){index=(index+1)%a.length;flipped=false;render();}};
+$('mark').onclick=()=>{const c=list()[index];if(c){cards[c._i].bookmarked=!cards[c._i].bookmarked;if(filteredOnly&&!cards[c._i].bookmarked)index=Math.min(index,list().length-1);persist();render();}};
+$('filter').onclick=()=>{filteredOnly=!filteredOnly;index=0;flipped=false;render();};
+$('swap').onclick=()=>{swapped=!swapped;flipped=false;$('swap').textContent=swapped?'단어부터 보기':'뜻부터 보기';render();};
+$('delete').onclick=()=>{const c=list()[index];if(c&&confirm('현재 카드를 삭제할까요?')){cards.splice(c._i,1);index=0;persist();render();}};
+$('reset').onclick=()=>{cards.sort(()=>Math.random()-.5);cards.forEach(c=>c.bookmarked=false);index=0;filteredOnly=false;flipped=false;persist();render();statusMsg('카드를 섞고 모르는 카드 표시를 초기화했습니다.');};
+$('add-manual').onclick=()=>$('manual').showModal();
+$('manualform').addEventListener('submit',e=>{if(e.submitter?.id!=='save-manual')return;e.preventDefault();addCards([{term:$('mterm').value,reading:$('mreading').value,meaning:$('mmeaning').value,example:$('mexample').value,type:'other'}]);$('manual').close();e.target.reset();statusMsg('카드를 저장했습니다.','ok');});
+$('export').onclick=()=>{if(!cards.length){statusMsg('내보낼 카드가 없습니다.','error');return;}const blob=new Blob([JSON.stringify({format:'ai-smart-flashcards',version:1,cards},null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='flashcards-'+new Date().toISOString().slice(0,10)+'.json';a.click();URL.revokeObjectURL(url);statusMsg('카드 목록 파일을 내보냈습니다.','ok');};
+$('import').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;try{const data=JSON.parse(await f.text());const incoming=Array.isArray(data)?data:data.cards;if(!Array.isArray(incoming))throw new Error('올바른 카드 파일이 아닙니다.');const valid=incoming.filter(c=>c&&typeof c.term==='string'&&typeof c.meaning==='string');if(!valid.length)throw new Error('가져올 수 있는 카드가 없습니다.');if(confirm(`${valid.length}개 카드를 추가할까요? 기존 카드는 유지됩니다.`)){addCards(valid);statusMsg(`${valid.length}개 카드를 가져왔습니다.`,'ok');}}catch(err){statusMsg(err.message||'파일을 읽을 수 없습니다.','error');}finally{e.target.value='';}});
+render();
+</script>
+</body></html>
